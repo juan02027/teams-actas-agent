@@ -57,7 +57,25 @@ function textFromContent(content: unknown) {
   return "{}";
 }
 function stringArray(value: unknown) { return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim()) : []; }
-function normalizeOutput(raw: Record<string, unknown>): MeetingOutput {
+function fallbackCommitments(transcript: string, attendees: Array<{ name: string; email: string; role?: string }> = []) {
+  const actionPattern = /\b(debe(?:mos|rán)?|se debe|quedó en|acordamos|compromiso|tarea|entregar|enviar|preparar|validar|revisar|programar|coordinar|documentar|actualizar|completar|hacer seguimiento|dar seguimiento|agendar|compartir|elaborar|definir)\b/i;
+  const datePattern = /\b(hoy|mañana|lunes|martes|miércoles|jueves|viernes|sábado|domingo|esta semana|la próxima semana|antes del [^,.;\n]+|el [^,.;\n]+|\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?|\d{1,2}\s+de\s+[a-záéíóú]+)\b/i;
+  const seen = new Set<string>();
+  return transcript.split(/\r?\n|(?<=[.!?])\s+/).flatMap((line) => {
+    const clean = line.replace(/^[-*•\d.)\s]+/, "").trim();
+    if (clean.length < 12 || !actionPattern.test(clean)) return [];
+    const key = clean.toLowerCase(); if (seen.has(key)) return []; seen.add(key);
+    const colon = clean.indexOf(":");
+    const possibleName = colon > 0 ? clean.slice(0, colon).trim() : "";
+    const attendee = attendees.find((person) => possibleName && person.name.toLowerCase().includes(possibleName.toLowerCase()));
+    const personName = attendee?.name || (possibleName && possibleName.split(" ").length <= 5 ? possibleName : "Por definir");
+    const dueDate = clean.match(datePattern)?.[0] || "Por definir";
+    const action = (colon > 0 ? clean.slice(colon + 1) : clean).trim();
+    if (action.length < 8) return [];
+    return [{ personName, personEmail: attendee?.email || "", action, dueDate, evidence: clean, confidence: "medium" as const }];
+  }).slice(0, 20);
+}
+function normalizeOutput(raw: Record<string, unknown>, transcript = "", attendees: Array<{ name: string; email: string; role?: string }> = []): MeetingOutput {
   const rawCommitments = Array.isArray(raw.commitments) ? raw.commitments : [];
   const commitments = rawCommitments.flatMap((item) => {
     if (!item || typeof item !== "object") return [];
@@ -66,21 +84,22 @@ function normalizeOutput(raw: Record<string, unknown>): MeetingOutput {
     const action = typeof candidate.action === "string" ? candidate.action.trim() : "";
     const dueDate = typeof candidate.dueDate === "string" ? candidate.dueDate.trim() : "";
     const evidence = typeof candidate.evidence === "string" ? candidate.evidence.trim() : "";
-    if (!personName || !action || !evidence || /^(no definido|no definida|n\/a|none|null)$/i.test(personName)) return [];
+    if (!action || /^(no definido|no definida|n\/a|none|null)$/i.test(personName)) return [];
     const confidence: "high" | "medium" | "low" = candidate.confidence === "high" || candidate.confidence === "medium" || candidate.confidence === "low" ? candidate.confidence : "medium";
-    return [{ personName, personEmail: typeof candidate.personEmail === "string" ? candidate.personEmail.trim() : "", action, dueDate, evidence, confidence }];
+    return [{ personName: personName || "Por definir", personEmail: typeof candidate.personEmail === "string" ? candidate.personEmail.trim() : "", action, dueDate: dueDate || "Por definir", evidence: evidence || action, confidence }];
   });
+  const finalCommitments = commitments.length ? commitments : fallbackCommitments(transcript, attendees);
   return {
     executiveSummary: typeof raw.executiveSummary === "string" && raw.executiveSummary.trim() ? raw.executiveSummary.trim() : "No se identificaron notas relevantes en la transcripción.",
     objective: typeof raw.objective === "string" && raw.objective.trim() ? raw.objective.trim() : "No se identificó un objetivo explícito en la transcripción.",
-    decisions: stringArray(raw.decisions).slice(0, 8), openTopics: stringArray(raw.openTopics).slice(0, 8), risks: stringArray(raw.risks).slice(0, 8), commitments: commitments.slice(0, 20),
+    decisions: stringArray(raw.decisions).slice(0, 8), openTopics: stringArray(raw.openTopics).slice(0, 8), risks: stringArray(raw.risks).slice(0, 8), commitments: finalCommitments.slice(0, 20),
   };
 }
 
 export async function generateMeetingDocuments(input: { meetingTitle: string; transcript: string; attendees?: Array<{ name: string; email: string; role?: string }> }) {
   const attendeeText = input.attendees?.length ? input.attendees.map((person) => `${person.name} <${person.email}>${person.role ? ` (${person.role})` : ""}`).join("\n") : "[No hay asistentes disponibles]";
   const user = `Título: ${input.meetingTitle}\n\nAsistentes invitados (inclúyelos en el acta, aunque no hayan hablado):\n${attendeeText}\n\nTranscripción:\n${compactTranscript(input.transcript)}`;
-  if (ENV.groqApiKey) return normalizeOutput(await generateWithGroq({ system: systemPrompt, user, schema: meetingOutputSchema }));
+  if (ENV.groqApiKey) return normalizeOutput(await generateWithGroq({ system: systemPrompt, user, schema: meetingOutputSchema }), input.transcript, input.attendees);
 
   const response = await invokeLLM({
     model: "gpt-5-mini",
@@ -88,5 +107,5 @@ export async function generateMeetingDocuments(input: { meetingTitle: string; tr
     response_format: { type: "json_schema", json_schema: { name: "teams_meeting_documents", strict: true, schema: meetingOutputSchema } },
     maxTokens: 8000,
   });
-  return normalizeOutput(JSON.parse(textFromContent(response.choices?.[0]?.message?.content)) as Record<string, unknown>);
+  return normalizeOutput(JSON.parse(textFromContent(response.choices?.[0]?.message?.content)) as Record<string, unknown>, input.transcript, input.attendees);
 }

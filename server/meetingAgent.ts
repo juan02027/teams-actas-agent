@@ -57,6 +57,15 @@ function textFromContent(content: unknown) {
   return "{}";
 }
 function stringArray(value: unknown) { return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim()) : []; }
+export function inferAttendeesFromTranscript(transcript: string) {
+  const speakers = new Set<string>();
+  for (const match of Array.from(transcript.matchAll(/\[?Hablante\s*(\d+)\]?/gi))) speakers.add(`Hablante ${match[1]}`);
+  const named = new Set<string>();
+  const namePattern = /(?:soy|habla|les habla|mi nombre es|aquí está)\s+([A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ]+){0,3})/g;
+  for (const match of Array.from(transcript.matchAll(namePattern))) named.add(match[1].trim());
+  const people = Array.from(new Set([...Array.from(named), ...Array.from(speakers)]));
+  return people.map((name) => ({ name, email: "", role: "Participante" }));
+}
 function fallbackCommitments(transcript: string, attendees: Array<{ name: string; email: string; role?: string }> = []) {
   const actionPattern = /\b(debe(?:mos|rán)?|se debe|quedó en|acordamos|compromiso|tarea|entregar|enviar|preparar|validar|revisar|programar|coordinar|documentar|actualizar|completar|hacer seguimiento|dar seguimiento|agendar|compartir|elaborar|definir)\b/i;
   const datePattern = /\b(hoy|mañana|lunes|martes|miércoles|jueves|viernes|sábado|domingo|esta semana|la próxima semana|antes del [^,.;\n]+|el [^,.;\n]+|\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?|\d{1,2}\s+de\s+[a-záéíóú]+)\b/i;

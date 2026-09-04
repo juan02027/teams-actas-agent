@@ -6,7 +6,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { processMeetingTranscript } from "./meetingPipeline";
-import { generateMeetingDocuments } from "./meetingAgent";
+import { generateMeetingDocuments, inferAttendeesFromTranscript } from "./meetingAgent";
 import { makeLocalDocuments } from "./localDocuments";
 import { decodeRecordingDataUrl, transcribeWithGroq } from "./groq";
 import { sendMinutesEmail } from "./email";
@@ -25,11 +25,12 @@ async function processStoredRecording(meetingId: number, input: { buffer: Buffer
   updateLocalMeeting(target.id, { status: "processing", errorMessage: null });
   try {
     const transcript = await transcribeWithGroq({ buffer: input.buffer, mimeType: input.mimeType, title: target.title });
-    const output = await generateMeetingDocuments({ meetingTitle: target.title, transcript: transcript.text, attendees: input.attendees });
-    const generated = await makeLocalDocuments({ meetingTitle: target.title, output, attendees: input.attendees });
+    const attendees = input.attendees?.length ? input.attendees : inferAttendeesFromTranscript(transcript.text);
+    const output = await generateMeetingDocuments({ meetingTitle: target.title, transcript: transcript.text, attendees });
+    const generated = await makeLocalDocuments({ meetingTitle: target.title, output, attendees });
     const documents = saveLocalDocuments({ meetingId: target.id, documents: generated.documents, commitments: output.commitments });
     updateLocalMeeting(target.id, { status: "review" });
-    return { meetingId: target.id, graphMeetingId: target.graphMeetingId, attendees: input.attendees || [], meetingTitle: target.title, transcript: transcript.text, output, recordingUrl: `/api/local-recordings/${target.id}/download`, documents, dataDirectory: localDataDirectory() };
+    return { meetingId: target.id, graphMeetingId: target.graphMeetingId, attendees, meetingTitle: target.title, transcript: transcript.text, output, recordingUrl: `/api/local-recordings/${target.id}/download`, documents, dataDirectory: localDataDirectory() };
   } catch (error) {
     updateLocalMeeting(target.id, { status: "error", errorMessage: error instanceof Error ? error.message : "Error de procesamiento" });
     throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "No se pudo procesar la grabación.", cause: error });

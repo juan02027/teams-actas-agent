@@ -14,7 +14,7 @@ function actaLines(title: string, output: MeetingOutput, attendees: Array<{ name
     "Nombre completo | Correo | Cargo",
     ...(attendees.length ? attendees.map((person) => `${person.name} | ${person.email || "-"} | ${person.role || "Participante"}`) : ["[No se encontraron asistentes en el calendario]"]),
     "Información de planeación de la reunión",
-    "[Registrar la información de planeación, objetivo y contexto de la reunión]",
+    output.objective || "[No se identificó el objetivo de la reunión]",
     "Notas de la Reunión",
     output.executiveSummary || "[Registrar únicamente los temas relevantes tratados]",
     "Temas abiertos",
@@ -44,6 +44,8 @@ export async function makeLocalDocuments(input: { meetingTitle: string; output: 
   section("Asistentes (" + (input.attendees?.length || 0) + ")"); pdf.font("Helvetica").fontSize(10).fillColor(ink).text("Nombre completo                                      Correo / Cargo"); pdf.moveDown(0.25).fontSize(9).fillColor(muted).text(input.attendees?.length ? input.attendees.map((person) => `${person.name} | ${person.email || "-"} | ${person.role || "Participante"}`).join("\n") : "[No se encontraron asistentes en el calendario]");
   section("Información de planeación de la reunión"); pdf.font("Helvetica").fontSize(10).fillColor(ink).text(`[Objetivo y contexto] ${input.output.objective || "Registrar la información de planeación de la reunión."}`, { width: 516, lineGap: 3 });
   section("Notas de la Reunión"); pdf.font("Helvetica").fontSize(10).fillColor(ink).text(input.output.executiveSummary || "[Registrar únicamente los temas relevantes tratados]", { width: 516, lineGap: 3 });
+  if (input.output.openTopics.length) { section("Temas abiertos"); pdf.font("Helvetica").fontSize(10).fillColor(ink).text(input.output.openTopics.map((item) => `• ${item}`).join("\n"), { width: 516, lineGap: 3 }); }
+  if (input.output.risks.length) { section("Riesgos o bloqueos"); pdf.font("Helvetica").fontSize(10).fillColor(ink).text(input.output.risks.map((item) => `• ${item}`).join("\n"), { width: 516, lineGap: 3 }); }
   section("Tareas de la Reunión"); const cols = [48, 190, 326, 420, 480, 564]; pdf.fillColor(navy).rect(48, pdf.y, 516, 24).fill(); pdf.fillColor("white").font("Helvetica-Bold").fontSize(8).text("TAREA", 54, pdf.y + 8).text("NOTA", 196, pdf.y + 8).text("RESPONSABLE", 332, pdf.y + 8).text("ESTADO", 426, pdf.y + 8).text("FECHA", 486, pdf.y + 8); pdf.y += 24; const rows = input.output.commitments.length ? input.output.commitments : [{ action: "[Sin tareas con responsable y fecha]", evidence: "", personName: "", dueDate: "" }]; rows.forEach((item, index) => { const y = pdf.y; const h = 32; pdf.fillColor(index % 2 ? "#F7FAFA" : light).rect(48, y, 516, h).fill(); pdf.fillColor(ink).font("Helvetica").fontSize(7.5).text(item.action, 54, y + 7, { width: 130, height: 22, ellipsis: true }).text(item.evidence || "-", 196, y + 7, { width: 124, height: 22, ellipsis: true }).text(item.personName || "-", 332, y + 7, { width: 82, height: 22, ellipsis: true }).text(item.personName ? "Pendiente" : "-", 426, y + 7, { width: 50 }).text(item.dueDate || "-", 486, y + 7, { width: 72, ellipsis: true }); pdf.y += h; });
   if (input.output.decisions.length) { section("Decisiones"); pdf.font("Helvetica").fontSize(10).fillColor(ink).text(input.output.decisions.map((item) => `• ${item}`).join("\n"), { width: 516, lineGap: 3 }); }
   pdf.fontSize(8).fillColor(muted).text("Documento generado por Teams Actas Agent · Revisar antes de distribuir", 48, 748, { width: 516, align: "center" }); pdf.end();

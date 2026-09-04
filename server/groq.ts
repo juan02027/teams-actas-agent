@@ -77,17 +77,17 @@ export async function generateWithGroq(input: { system: string; user: string; sc
   // JSON validation failure, not a model access failure). Do not use the
   // retired llama-3.1-8b-instant identifier here.
   const model = ENV.groqChatModel;
-  const body = {
+  const body: Record<string, unknown> = {
     model,
     temperature: 0,
     max_completion_tokens: 8192,
-    reasoning_effort: "low",
-    reasoning_format: "hidden",
+    response_format: { type: "json_object" },
     messages: [
       { role: "system", content: `${input.system}\nResponde solo con un objeto JSON válido, sin markdown ni texto adicional. Usa exactamente las claves executiveSummary, objective, decisions, openTopics, risks y commitments. Los arreglos pueden estar vacíos.` },
       { role: "user", content: `${input.user}\n\nDevuelve únicamente JSON válido. Si no hay compromisos que cumplan las reglas, usa commitments: [].` },
     ],
   };
+  if (model.startsWith("openai/gpt-oss")) { body.reasoning_effort = "low"; body.reasoning_format = "hidden"; }
   const request = () => fetch(`${GROQ_BASE_URL}/chat/completions`, { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
   let response = await request();
   if (response.status === 429) {

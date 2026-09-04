@@ -257,5 +257,5 @@ export function deleteLocalCommitment(id: number) {
   const state = readState(); state.commitments = state.commitments.filter((commitment) => commitment.id !== id); writeState(state); return { id };
 }
 export function getLocalSettings() { return readState().settings; }
-export function saveLocalSettings(input: Partial<LocalSettings>) { const state = readState(); state.settings = { companyName: "Toda la empresa", recordByDefault: 0, processByDefault: 1, requireReview: 1, destination: "SharePoint / Actas de reuniones", aiModel: "openai/gpt-oss-120b", ...state.settings, ...input }; writeState(state); return state.settings; }
+export function saveLocalSettings(input: Partial<LocalSettings>) { const state = readState(); state.settings = { companyName: "Toda la empresa", recordByDefault: 0, processByDefault: 1, requireReview: 1, destination: "SharePoint / Actas de reuniones", aiModel: "groq/compound-mini", ...state.settings, ...input }; writeState(state); return state.settings; }
 export function getLocalFile(pathname: string) { return fs.existsSync(pathname) ? pathname : undefined; }

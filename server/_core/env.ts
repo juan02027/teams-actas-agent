@@ -11,7 +11,7 @@ export const ENV = {
   deepgramApiKey: process.env.DEEPGRAM_API_KEY ?? "",
   deepgramModel: process.env.DEEPGRAM_MODEL ?? "nova-3",
   groqTranscriptionModel: process.env.GROQ_TRANSCRIPTION_MODEL ?? "whisper-large-v3-turbo",
-  groqChatModel: process.env.GROQ_CHAT_MODEL ?? "openai/gpt-oss-120b",
+  groqChatModel: process.env.GROQ_CHAT_MODEL ?? "groq/compound-mini",
   sharePointSiteUrl: process.env.SHAREPOINT_SITE_URL ?? "https://abcstorage.sharepoint.com/transformaciondigital",
   sharePointListName: process.env.SHAREPOINT_LIST_NAME ?? "Reuniones Efectivas",
   sharePointColumnName: process.env.SHAREPOINT_COLUMN_NAME ?? "Nota",

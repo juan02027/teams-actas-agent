@@ -19,8 +19,9 @@ import { trpc } from "@/lib/trpc";
 
 const microsoftClientId = import.meta.env.VITE_MICROSOFT_CLIENT_ID as string | undefined;
 const microsoftTenantId = (import.meta.env.VITE_MICROSOFT_TENANT_ID as string | undefined) || "common";
+const publicAppUrl = ((import.meta.env.VITE_PUBLIC_APP_URL as string | undefined) || window.location.origin).replace(/\/$/, "");
 const microsoftScopes = ["openid", "profile", "User.Read", "Calendars.Read", "Sites.ReadWrite.All"];
-const microsoftApp = microsoftClientId ? new PublicClientApplication({ auth: { clientId: microsoftClientId, authority: `https://login.microsoftonline.com/${microsoftTenantId}`, redirectUri: `${window.location.origin}/`, postLogoutRedirectUri: `${window.location.origin}/` } }) : null;
+const microsoftApp = microsoftClientId ? new PublicClientApplication({ auth: { clientId: microsoftClientId, authority: `https://login.microsoftonline.com/${microsoftTenantId}`, redirectUri: `${publicAppUrl}/`, postLogoutRedirectUri: `${publicAppUrl}/` } }) : null;
 
 type Attendee = { name: string; email: string; role?: string };
 interface Meeting { id: string | number; title: string; organizerName: string; scheduledAt: string; durationMinutes: number; attendeesCount: number; attendees?: Attendee[]; recordingEnabled: boolean; processingEnabled: boolean; status: string; source?: string; }
@@ -57,6 +58,7 @@ async function downloadFile(url: string, fileName: string) { const response = aw
 
 async function uploadBlobToSharePoint(blob: Blob, fileName: string, folder = "Grabaciones") {
   if (!microsoftApp) throw new Error("Microsoft 365 no está vinculado");
+  await microsoftApp.initialize();
   const account = microsoftApp.getAllAccounts()[0];
   if (!account) throw new Error("No hay una sesión de Microsoft 365 activa");
   const token = await microsoftApp.acquireTokenSilent({ account, scopes: ["Sites.ReadWrite.All"] });
@@ -100,6 +102,7 @@ async function uploadGeneratedDocuments(documents: Array<{ fileName: string; sto
 type RemoteSharePointFile = { id: string; name: string; size: number; modified: string; webUrl?: string };
 async function getSharePointDrive() {
   if (!microsoftApp) throw new Error("Microsoft 365 no está vinculado");
+  await microsoftApp.initialize();
   const account = microsoftApp.getAllAccounts()[0]; if (!account) throw new Error("No hay una sesión de Microsoft 365 activa");
   const token = await microsoftApp.acquireTokenSilent({ account, scopes: ["Sites.ReadWrite.All"] });
   const siteUrl = new URL(import.meta.env.VITE_SHAREPOINT_SITE_URL || "https://abcstorage.sharepoint.com/transformaciondigital");

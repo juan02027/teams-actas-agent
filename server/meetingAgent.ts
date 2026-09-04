@@ -80,13 +80,17 @@ function normalizeOutput(raw: Record<string, unknown>, transcript = "", attendee
   const commitments = rawCommitments.flatMap((item) => {
     if (!item || typeof item !== "object") return [];
     const candidate = item as Record<string, unknown>;
-    const personName = typeof candidate.personName === "string" ? candidate.personName.trim() : "";
+    const rawPersonName = typeof candidate.personName === "string" ? candidate.personName.trim() : "";
     const action = typeof candidate.action === "string" ? candidate.action.trim() : "";
     const dueDate = typeof candidate.dueDate === "string" ? candidate.dueDate.trim() : "";
     const evidence = typeof candidate.evidence === "string" ? candidate.evidence.trim() : "";
-    if (!action || /^(no definido|no definida|n\/a|none|null)$/i.test(personName)) return [];
+    if (!action || /^(no definido|no definida|n\/a|none|null)$/i.test(rawPersonName)) return [];
     const confidence: "high" | "medium" | "low" = candidate.confidence === "high" || candidate.confidence === "medium" || candidate.confidence === "low" ? candidate.confidence : "medium";
-    return [{ personName: personName || "Por definir", personEmail: typeof candidate.personEmail === "string" ? candidate.personEmail.trim() : "", action, dueDate: dueDate || "Por definir", evidence: evidence || action, confidence }];
+    const sourceText = `${rawPersonName} ${action} ${evidence}`.toLowerCase();
+    const attendee = attendees.find((person) => person.name.trim().length > 3 && sourceText.includes(person.name.toLowerCase()));
+    const personName = attendee?.name || rawPersonName || "Por definir";
+    const personEmail = attendee?.email || (typeof candidate.personEmail === "string" ? candidate.personEmail.trim() : "");
+    return [{ personName, personEmail, action, dueDate: dueDate || "Por definir", evidence: evidence || action, confidence }];
   });
   const finalCommitments = commitments.length ? commitments : fallbackCommitments(transcript, attendees);
   return {

@@ -42,7 +42,7 @@ export type MeetingOutput = {
 
 const systemPrompt = `Eres un secretario corporativo. Analiza TODA la transcripción y redacta un acta completa, clara y específica. El executiveSummary debe tener varios párrafos o viñetas e incluir los temas realmente tratados, avances, explicaciones relevantes, problemas, decisiones y próximos pasos; no lo reduzcas a una frase. Ignora únicamente saludos, silencios, repeticiones y conversación casual. No inventes información.
 
-COMPROMISOS/TAREAS: extrae cada tarea o compromiso que se haya expresado de forma clara, con su responsable y una evidencia breve de la transcripción. Incluye acciones como entregar, enviar, preparar, validar, revisar, programar o hacer seguimiento cuando estén asignadas explícitamente. Si se menciona una fecha o plazo, consérvalo; si no se menciona, usa dueDate = "Por definir" para que el operador pueda completarlo. No conviertas preguntas, deseos, opiniones o temas generales en tareas. Describe la acción con suficiente detalle para que otra persona pueda ejecutarla. Devuelve únicamente JSON que cumpla el esquema. `;
+COMPROMISOS/TAREAS: extrae cada tarea o compromiso que se haya expresado de forma clara, con su responsable y una evidencia breve de la transcripción. Incluye acciones como entregar, enviar, preparar, validar, revisar, programar o hacer seguimiento cuando estén asignadas explícitamente. Si se menciona una fecha o plazo, consérvalo; si no se menciona, usa dueDate = "Por definir" para que el operador pueda completarlo. No conviertas preguntas, deseos, opiniones o temas generales en tareas. Si no hay asistentes del calendario, usa el nombre que aparezca en la transcripción; si Deepgram solo entrega etiquetas, usa "Hablante 1", "Hablante 2", etc., nunca dejes personName vacío. Describe la acción con suficiente detalle para que otra persona pueda ejecutarla. Devuelve únicamente JSON que cumpla el esquema. `;
 
 const MAX_TRANSCRIPT_CHARS = Number(process.env.GROQ_MAX_TRANSCRIPT_CHARS || 60000);
 function compactTranscript(transcript: string) {
@@ -68,7 +68,8 @@ function fallbackCommitments(transcript: string, attendees: Array<{ name: string
     const colon = clean.indexOf(":");
     const possibleName = colon > 0 ? clean.slice(0, colon).trim() : "";
     const attendee = attendees.find((person) => possibleName && person.name.toLowerCase().includes(possibleName.toLowerCase()));
-    const personName = attendee?.name || (possibleName && possibleName.split(" ").length <= 5 ? possibleName : "Por definir");
+    const speaker = clean.match(/\[?Hablante\s*(\d+)\]?/i)?.[1];
+    const personName = attendee?.name || (possibleName && possibleName.split(" ").length <= 5 ? possibleName : speaker ? `Hablante ${speaker}` : "Hablante no identificado");
     const dueDate = clean.match(datePattern)?.[0] || "Por definir";
     const action = (colon > 0 ? clean.slice(colon + 1) : clean).trim();
     if (action.length < 8) return [];
@@ -88,7 +89,8 @@ function normalizeOutput(raw: Record<string, unknown>, transcript = "", attendee
     const confidence: "high" | "medium" | "low" = candidate.confidence === "high" || candidate.confidence === "medium" || candidate.confidence === "low" ? candidate.confidence : "medium";
     const sourceText = `${rawPersonName} ${action} ${evidence}`.toLowerCase();
     const attendee = attendees.find((person) => person.name.trim().length > 3 && sourceText.includes(person.name.toLowerCase()));
-    const personName = attendee?.name || rawPersonName || "Por definir";
+    const speaker = sourceText.match(/hablante\s*\[?(\d+)\]?/i)?.[1];
+    const personName = attendee?.name || rawPersonName || (speaker ? `Hablante ${speaker}` : "Hablante no identificado");
     const personEmail = attendee?.email || (typeof candidate.personEmail === "string" ? candidate.personEmail.trim() : "");
     return [{ personName, personEmail, action, dueDate: dueDate || "Por definir", evidence: evidence || action, confidence }];
   });

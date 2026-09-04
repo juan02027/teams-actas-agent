@@ -61,12 +61,13 @@ export async function transcribeWithGroq(input: { buffer: Buffer; mimeType: stri
 }
 
 async function transcribeWithDeepgram(input: { buffer: Buffer; mimeType: string; language?: string; title?: string }) {
-  const params = new URLSearchParams({ model: ENV.deepgramModel, language: input.language || "es", smart_format: "true", punctuate: "true", diarize: "true" });
+  const params = new URLSearchParams({ model: ENV.deepgramModel, language: input.language || "es", smart_format: "true", punctuate: "true", diarize: "true", utterances: "true" });
   const response = await fetch(`https://api.deepgram.com/v1/listen?${params}`, { method: "POST", headers: { Authorization: `Token ${ENV.deepgramApiKey}`, "Content-Type": input.mimeType || "audio/webm" }, body: new Uint8Array(input.buffer) });
   if (!response.ok) { const detail = await response.text().catch(() => ""); throw new Error(`Deepgram falló (${response.status}). La grabación quedó guardada; revisa DEEPGRAM_API_KEY. ${detail}`); }
-  const payload = await response.json() as { results?: { channels?: Array<{ alternatives?: Array<{ transcript?: string }>; detected_language?: string }> }; metadata?: { duration?: number } };
+  const payload = await response.json() as { results?: { channels?: Array<{ alternatives?: Array<{ transcript?: string }>; detected_language?: string }>; utterances?: Array<{ speaker?: number; transcript?: string }> }; metadata?: { duration?: number } };
   const channel = payload.results?.channels?.[0];
-  const text = channel?.alternatives?.[0]?.transcript?.trim() || "";
+  const utterances = payload.results?.utterances || [];
+  const text = utterances.length ? utterances.map((item) => `[Hablante ${typeof item.speaker === "number" ? item.speaker + 1 : "?"}] ${item.transcript || ""}`).join("\n").trim() : channel?.alternatives?.[0]?.transcript?.trim() || "";
   if (text.length < 10) throw new Error("Deepgram no devolvió una transcripción utilizable. La grabación permanece guardada.");
   return { text, language: channel?.detected_language || input.language || "es", duration: payload.metadata?.duration || null };
 }

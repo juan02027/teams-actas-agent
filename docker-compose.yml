@@ -1,0 +1,30 @@
+services:
+  teams-actas-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_MICROSOFT_CLIENT_ID: ${VITE_MICROSOFT_CLIENT_ID:-}
+        VITE_MICROSOFT_TENANT_ID: ${VITE_MICROSOFT_TENANT_ID:-}
+        VITE_SHAREPOINT_SITE_URL: ${VITE_SHAREPOINT_SITE_URL:-}
+        VITE_SHAREPOINT_LIST_NAME: ${VITE_SHAREPOINT_LIST_NAME:-}
+        VITE_SHAREPOINT_COLUMN_NAME: ${VITE_SHAREPOINT_COLUMN_NAME:-}
+    image: teams-actas-agent:latest
+    container_name: teams-actas-agent
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      LOCAL_DATA_DIR: /app/data
+    ports:
+      - "3000:3000"
+    volumes:
+      - teams_actas_data:/app/data
+    stop_grace_period: 30s
+
+volumes:
+  teams_actas_data:
+    name: teams_actas_data

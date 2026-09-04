@@ -1,0 +1,183 @@
+[
+  {
+    "meeting": {
+      "id": 1788198451434,
+      "graphMeetingId": "local-1-1788198451434",
+      "title": "Reunión grabada localmente",
+      "organizerName": "Operador local",
+      "organizerEmail": null,
+      "scheduledAt": "2026-08-31T17:47:31.434Z",
+      "attendeesCount": 0,
+      "durationMinutes": 0,
+      "recordingEnabled": 1,
+      "processingEnabled": 1,
+      "status": "review",
+      "transcriptUrl": null,
+      "recordingUrl": "/api/local-download?key=recordings%2F1-1788198425402_e3c39872.webm",
+      "createdAt": "2026-08-31T17:47:31.434Z",
+      "updatedAt": "2026-08-31T17:47:31.434Z"
+    },
+    "documents": [
+      {
+        "kind": "minutes",
+        "format": "docx",
+        "fileName": "Reunion-grabada-localmente-2026-08-31-acta.docx",
+        "storageKey": "meeting-documents/Reunion-grabada-localmente-2026-08-31-acta_4dcd4a5f.docx",
+        "storageUrl": "/api/local-download?key=meeting-documents%2FReunion-grabada-localmente-2026-08-31-acta_4dcd4a5f.docx"
+      },
+      {
+        "kind": "commitments",
+        "format": "docx",
+        "fileName": "Reunion-grabada-localmente-2026-08-31-compromisos.docx",
+        "storageKey": "meeting-documents/Reunion-grabada-localmente-2026-08-31-compromisos_6177b018.docx",
+        "storageUrl": "/api/local-download?key=meeting-documents%2FReunion-grabada-localmente-2026-08-31-compromisos_6177b018.docx"
+      },
+      {
+        "kind": "minutes",
+        "format": "pdf",
+        "fileName": "Reunion-grabada-localmente-2026-08-31-acta.pdf",
+        "storageKey": "meeting-documents/Reunion-grabada-localmente-2026-08-31-acta_7c517c7c.pdf",
+        "storageUrl": "/api/local-download?key=meeting-documents%2FReunion-grabada-localmente-2026-08-31-acta_7c517c7c.pdf"
+      }
+    ],
+    "commitments": []
+  },
+  {
+    "meeting": {
+      "id": 1788215172336,
+      "graphMeetingId": "local-1-1788215172335",
+      "title": "[ABC] Sesión técnica de capacitación IA Visado",
+      "organizerName": "Operador local",
+      "organizerEmail": null,
+      "scheduledAt": "2026-08-31T22:26:12.336Z",
+      "attendeesCount": 0,
+      "durationMinutes": 0,
+      "recordingEnabled": 1,
+      "processingEnabled": 1,
+      "status": "review",
+      "transcriptUrl": null,
+      "recordingUrl": "/api/local-download?key=recordings%2F1-1788215170249_fcd1ab01.webm",
+      "createdAt": "2026-08-31T22:26:12.336Z",
+      "updatedAt": "2026-08-31T22:26:12.336Z"
+    },
+    "documents": [
+      {
+        "kind": "minutes",
+        "format": "docx",
+        "fileName": "ABC-Sesion-tecnica-de-capacitacion-IA-Visado-2026-08-31-acta.docx",
+        "storageKey": "meeting-documents/ABC-Sesion-tecnica-de-capacitacion-IA-Visado-2026-08-31-acta_53fbbd85.docx",
+        "storageUrl": "/api/local-download?key=meeting-documents%2FABC-Sesion-tecnica-de-capacitacion-IA-Visado-2026-08-31-acta_53fbbd85.docx"
+      },
+      {
+        "kind": "commitments",
+        "format": "docx",
+        "fileName": "ABC-Sesion-tecnica-de-capacitacion-IA-Visado-2026-08-31-compromisos.docx",
+        "storageKey": "meeting-documents/ABC-Sesion-tecnica-de-capacitacion-IA-Visado-2026-08-31-compromisos_b993d6fb.docx",
+        "storageUrl": "/api/local-download?key=meeting-documents%2FABC-Sesion-tecnica-de-capacitacion-IA-Visado-2026-08-31-compromisos_b993d6fb.docx"
+      },
+      {
+        "kind": "minutes",
+        "format": "pdf",
+        "fileName": "ABC-Sesion-tecnica-de-capacitacion-IA-Visado-2026-08-31-acta.pdf",
+        "storageKey": "meeting-documents/ABC-Sesion-tecnica-de-capacitacion-IA-Visado-2026-08-31-acta_8144c44b.pdf",
+        "storageUrl": "/api/local-download?key=meeting-documents%2FABC-Sesion-tecnica-de-capacitacion-IA-Visado-2026-08-31-acta_8144c44b.pdf"
+      }
+    ],
+    "commitments": []
+  },
+  {
+    "meeting": {
+      "id": 1788269759691,
+      "graphMeetingId": "local-1-1788269759690",
+      "title": "Daily Desarrollo - Innovacion",
+      "organizerName": "Operador local",
+      "organizerEmail": null,
+      "scheduledAt": "2026-09-01T13:35:59.690Z",
+      "attendeesCount": 0,
+      "durationMinutes": 0,
+      "recordingEnabled": 1,
+      "processingEnabled": 1,
+      "status": "review",
+      "transcriptUrl": null,
+      "recordingUrl": "/api/local-download/recordings/1-1788269758900_0e52238b.webm",
+      "createdAt": "2026-09-01T13:35:59.691Z",
+      "updatedAt": "2026-09-01T13:35:59.691Z"
+    },
+    "documents": [
+      {
+        "kind": "minutes",
+        "format": "docx",
+        "fileName": "Daily-Desarrollo---Innovacion-2026-09-01-acta.docx",
+        "storageKey": "meeting-documents/Daily-Desarrollo---Innovacion-2026-09-01-acta_1d549c9c.docx",
+        "storageUrl": "/api/local-download/meeting-documents/Daily-Desarrollo---Innovacion-2026-09-01-acta_1d549c9c.docx"
+      },
+      {
+        "kind": "commitments",
+        "format": "docx",
+        "fileName": "Daily-Desarrollo---Innovacion-2026-09-01-compromisos.docx",
+        "storageKey": "meeting-documents/Daily-Desarrollo---Innovacion-2026-09-01-compromisos_22411e2a.docx",
+        "storageUrl": "/api/local-download/meeting-documents/Daily-Desarrollo---Innovacion-2026-09-01-compromisos_22411e2a.docx"
+      },
+      {
+        "kind": "minutes",
+        "format": "pdf",
+        "fileName": "Daily-Desarrollo---Innovacion-2026-09-01-acta.pdf",
+        "storageKey": "meeting-documents/Daily-Desarrollo---Innovacion-2026-09-01-acta_422882fb.pdf",
+        "storageUrl": "/api/local-download/meeting-documents/Daily-Desarrollo---Innovacion-2026-09-01-acta_422882fb.pdf"
+      }
+    ],
+    "commitments": []
+  },
+  {
+    "meeting": {
+      "id": 1788272439707,
+      "graphMeetingId": "local-1-1788272439707",
+      "title": "Daily Desarrollo - Innovacion",
+      "organizerName": "Operador local",
+      "organizerEmail": null,
+      "scheduledAt": "2026-09-01T14:20:39.707Z",
+      "attendeesCount": 0,
+      "durationMinutes": 0,
+      "recordingEnabled": 1,
+      "processingEnabled": 1,
+      "status": "processing",
+      "transcriptUrl": null,
+      "recordingUrl": null,
+      "createdAt": "2026-09-01T14:20:39.707Z",
+      "updatedAt": "2026-09-01T14:20:39.707Z"
+    },
+    "documents": []
+  },
+  {
+    "meeting": {
+      "id": 1788273352029,
+      "graphMeetingId": "orphan-1788273352029",
+      "title": "Grabación pendiente de procesar",
+      "organizerName": "Operador",
+      "scheduledAt": "2026-09-01T14:20:31.812Z",
+      "status": "recorded",
+      "recordingUrl": "/api/local-download?key=recordings%2F1-1788272431795_3abc8d30.webm"
+    },
+    "documents": []
+  },
+  {
+    "meeting": {
+      "id": 1788275684102,
+      "graphMeetingId": "local-1-1788275684102",
+      "title": "MEJORAMIENTO PROCESO COMERCIAL ABC",
+      "organizerName": "Operador local",
+      "scheduledAt": "2026-09-01T15:14:44.102Z",
+      "attendeesCount": 0,
+      "organizerEmail": null,
+      "durationMinutes": 0,
+      "recordingEnabled": 1,
+      "processingEnabled": 1,
+      "status": "review",
+      "transcriptUrl": null,
+      "recordingUrl": "/api/local-download?key=recordings%2F1-1788275684096_3e1590df.webm",
+      "createdAt": "2026-09-01T15:14:44.102Z",
+      "updatedAt": "2026-09-01T15:14:44.102Z"
+    },
+    "documents": []
+  }
+]

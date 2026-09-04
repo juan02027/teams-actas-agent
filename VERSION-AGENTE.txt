@@ -1,0 +1,14 @@
+Teams Actas Agent - versión Windows local + Microsoft 365
+Fecha: 2026-09-01
+
+Correcciones incluidas:
+- Arranque Windows con cross-env y operador local de un solo usuario.
+- Grabaciones locales WebM con audio o pantalla + audio; video de hasta aproximadamente una hora/180 MB y modo largo audio-only.
+- Índice JSON local en data/recordings-index.json, archivos en data/recordings y documentos en data/documents.
+- Descarga de archivos con MIME y Content-Disposition correctos; nunca devuelve HTML.
+- Groq Whisper Large V3 Turbo y openai/gpt-oss-20b para actas JSON estructuradas, con fallback JSON Object.
+- Reprocesamiento de una grabación guardada cuando Groq falla.
+- Compromisos estrictos: responsable, fecha de entrega, evidencia y estado open/in_progress/done/blocked.
+- Generación de DOCX/PDF, eliminación de documentos/compromisos y prueba desde texto.
+- MSAL loginRedirect en la misma pestaña con Calendars.Read y Sites.ReadWrite.All.
+- Escritura exclusiva de fields.Nota en SharePoint Reuniones Efectivas.

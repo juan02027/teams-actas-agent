@@ -1,0 +1,47 @@
+import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
+import PDFDocument from "pdfkit";
+import type { MeetingOutput } from "./meetingAgent";
+
+function cleanFileName(value: string) { return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9-_ ]/g, "").trim().replace(/\s+/g, "-").slice(0, 70) || "reunion"; }
+function actaLines(title: string, output: MeetingOutput) {
+  const date = new Date().toLocaleDateString("es-CO");
+  return [
+    "Acta de Reunión",
+    "Código: SG-FO-07 - Versión: 10 - Fecha: 10/11/2017",
+    title.toUpperCase(),
+    `Fecha: ${date} || [hora inicio] - [hora fin]`,
+    "Asistentes (6)",
+    "Nombre completo | Cargo",
+    "[Registrar asistentes y cargos de la reunión]",
+    "Información de planeación de la reunión",
+    "[Registrar la información de planeación, objetivo y contexto de la reunión]",
+    "Notas de la Reunión",
+    output.executiveSummary || "[Registrar únicamente los temas relevantes tratados]",
+    "Tareas de la Reunión",
+    "Tarea | Nota | Responsable | Estado | Fecha",
+    ...(output.commitments.length ? output.commitments.map((item) => `${item.action} | ${item.evidence} | ${item.personName} | Pendiente | ${item.dueDate}`) : ["[Sin tareas con responsable y fecha de entrega]"]),
+    "",
+    `Objetivo: ${output.objective}`,
+    ...(output.decisions.length ? ["Decisiones", ...output.decisions.map((item) => `- ${item}`)] : []),
+  ];
+}
+export async function makeLocalDocuments(input: { meetingTitle: string; output: MeetingOutput }) {
+  const base = `${cleanFileName(input.meetingTitle)}-${new Date().toISOString().slice(0, 10)}`;
+  const lines = actaLines(input.meetingTitle, input.output);
+  const minutes = new Document({ sections: [{ children: lines.map((line, index) => new Paragraph({ text: line, heading: index === 0 ? HeadingLevel.TITLE : index === 2 ? HeadingLevel.HEADING_1 : undefined })) }] });
+  const minutesDocx = await Packer.toBuffer(minutes);
+  const commitments = new Document({ sections: [{ children: [new Paragraph({ text: "Compromisos de la reunión", heading: HeadingLevel.TITLE }), new Paragraph({ text: input.meetingTitle, heading: HeadingLevel.HEADING_1 }), new Paragraph({ text: "Responsable | Compromiso | Fecha | Estado" }), ...input.output.commitments.flatMap((item) => [new Paragraph({ children: [new TextRun(`${item.personName} | ${item.action} | ${item.dueDate} | Pendiente`)] }), new Paragraph({ text: `Evidencia: ${item.evidence}` })])] }] });
+  const commitmentsDocx = await Packer.toBuffer(commitments);
+  const pdf = new PDFDocument({ margin: 48, size: "LETTER", bufferPages: true }); const chunks: Buffer[] = []; pdf.on("data", (chunk) => chunks.push(chunk)); const done = new Promise<Buffer>((resolve) => pdf.on("end", () => resolve(Buffer.concat(chunks))));
+  const navy = "#123B5D", teal = "#0D776C", gold = "#D39B32", light = "#EEF5F5", ink = "#263B46", muted = "#607780";
+  const section = (label: string) => { pdf.moveDown(0.65).fillColor(teal).rect(48, pdf.y, 516, 22).fill().fillColor("white").font("Helvetica-Bold").fontSize(10).text(label.toUpperCase(), 60, pdf.y + 6).fillColor(ink); pdf.y += 10; };
+  pdf.rect(0, 0, 612, 95).fill(navy); pdf.fillColor(gold).rect(48, 22, 6, 51).fill(); pdf.fillColor("white").font("Helvetica-Bold").fontSize(22).text("ACTA DE REUNIÓN", 68, 25); pdf.font("Helvetica").fontSize(9).fillColor("#D8E7ED").text("SISTEMA DE GESTIÓN · MEJORAMIENTO DE PROCESOS", 69, 56); pdf.font("Helvetica-Bold").fontSize(9).fillColor("white").text("SG-FO-07  |  Versión 10  |  10/11/2017", 69, 72);
+  pdf.fillColor(ink).font("Helvetica-Bold").fontSize(16).text(input.meetingTitle.toUpperCase(), 48, 120, { width: 516 }); pdf.font("Helvetica").fontSize(10).fillColor(muted).text(`Fecha: ${new Date().toLocaleDateString("es-CO")}   |   Horario: [hora inicio] - [hora fin]`, 48, pdf.y + 8); pdf.moveDown(1.1);
+  section("Asistentes (6)"); pdf.font("Helvetica").fontSize(10).fillColor(ink).text("Nombre completo                                      Cargo"); pdf.moveDown(0.25).fontSize(9).fillColor(muted).text("[Registrar asistentes y cargos de la reunión]");
+  section("Información de planeación de la reunión"); pdf.font("Helvetica").fontSize(10).fillColor(ink).text(`[Objetivo y contexto] ${input.output.objective || "Registrar la información de planeación de la reunión."}`, { width: 516, lineGap: 3 });
+  section("Notas de la Reunión"); pdf.font("Helvetica").fontSize(10).fillColor(ink).text(input.output.executiveSummary || "[Registrar únicamente los temas relevantes tratados]", { width: 516, lineGap: 3 });
+  section("Tareas de la Reunión"); const cols = [48, 190, 326, 420, 480, 564]; pdf.fillColor(navy).rect(48, pdf.y, 516, 24).fill(); pdf.fillColor("white").font("Helvetica-Bold").fontSize(8).text("TAREA", 54, pdf.y + 8).text("NOTA", 196, pdf.y + 8).text("RESPONSABLE", 332, pdf.y + 8).text("ESTADO", 426, pdf.y + 8).text("FECHA", 486, pdf.y + 8); pdf.y += 24; const rows = input.output.commitments.length ? input.output.commitments : [{ action: "[Sin tareas con responsable y fecha]", evidence: "", personName: "", dueDate: "" }]; rows.forEach((item, index) => { const y = pdf.y; const h = 32; pdf.fillColor(index % 2 ? "#F7FAFA" : light).rect(48, y, 516, h).fill(); pdf.fillColor(ink).font("Helvetica").fontSize(7.5).text(item.action, 54, y + 7, { width: 130, height: 22, ellipsis: true }).text(item.evidence || "-", 196, y + 7, { width: 124, height: 22, ellipsis: true }).text(item.personName || "-", 332, y + 7, { width: 82, height: 22, ellipsis: true }).text(item.personName ? "Pendiente" : "-", 426, y + 7, { width: 50 }).text(item.dueDate || "-", 486, y + 7, { width: 72, ellipsis: true }); pdf.y += h; });
+  if (input.output.decisions.length) { section("Decisiones"); pdf.font("Helvetica").fontSize(10).fillColor(ink).text(input.output.decisions.map((item) => `• ${item}`).join("\n"), { width: 516, lineGap: 3 }); }
+  pdf.fontSize(8).fillColor(muted).text("Documento generado por Teams Actas Agent · Revisar antes de distribuir", 48, 748, { width: 516, align: "center" }); pdf.end();
+  return { base, documents: [{ kind: "minutes" as const, format: "docx" as const, fileName: `${base}-acta.docx`, bytes: minutesDocx }, { kind: "commitments" as const, format: "docx" as const, fileName: `${base}-compromisos.docx`, bytes: commitmentsDocx }, { kind: "minutes" as const, format: "pdf" as const, fileName: `${base}-acta.pdf`, bytes: await done }] };
+}

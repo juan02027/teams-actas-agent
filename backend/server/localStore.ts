@@ -246,6 +246,13 @@ export function deleteLocalDocument(id: number) {
 export function updateLocalCommitmentStatus(id: number, status: LocalCommitment["status"]) {
   const state = readState(); const item = state.commitments.find((commitment) => commitment.id === id); if (!item) return undefined; item.status = status; writeState(state); return item;
 }
+export function updateLocalCommitment(id: number, patch: { personName?: string; action?: string; dueDate?: string }) {
+  const state = readState(); const item = state.commitments.find((commitment) => commitment.id === id); if (!item) return undefined;
+  if (patch.personName?.trim()) item.personName = patch.personName.trim();
+  if (patch.action?.trim()) item.action = patch.action.trim();
+  if (patch.dueDate?.trim()) item.dueDate = patch.dueDate.trim();
+  writeState(state); return item;
+}
 export function deleteLocalCommitment(id: number) {
   const state = readState(); state.commitments = state.commitments.filter((commitment) => commitment.id !== id); writeState(state); return { id };
 }

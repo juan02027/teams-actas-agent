@@ -8,6 +8,8 @@ type UseAuthOptions = {
   redirectPath?: string;
 };
 
+const localDemoMode = import.meta.env.DEV || import.meta.env.VITE_LOCAL_DEMO_MODE === "true";
+
 export function useAuth(options?: UseAuthOptions) {
   // Login is started via startLogin() in the effect below, only when we actually
   // navigate — never during render. startLogin() mints a one-time nonce + writes
@@ -17,6 +19,7 @@ export function useAuth(options?: UseAuthOptions) {
   const utils = trpc.useUtils();
 
   const meQuery = trpc.auth.me.useQuery(undefined, {
+    enabled: !localDemoMode,
     retry: false,
     refetchOnWindowFocus: false,
   });
@@ -28,6 +31,17 @@ export function useAuth(options?: UseAuthOptions) {
   });
 
   const logout = useCallback(async () => {
+    if (localDemoMode) {
+      try {
+        localStorage.removeItem("m365-connected");
+        localStorage.removeItem("m365-profile");
+        sessionStorage.removeItem("manus-cookie");
+      } catch {}
+      window.dispatchEvent(new Event("m365-profile-updated"));
+      window.dispatchEvent(new Event("m365-signed-out"));
+      utils.auth.me.setData(undefined, null);
+      return;
+    }
     try {
       await logoutMutation.mutateAsync();
     } catch (error: unknown) {
@@ -56,8 +70,8 @@ export function useAuth(options?: UseAuthOptions) {
       JSON.stringify(meQuery.data)
     );
     return {
-      user: meQuery.data ?? null,
-      loading: meQuery.isLoading || logoutMutation.isPending,
+      user: localDemoMode ? null : meQuery.data ?? null,
+      loading: localDemoMode ? logoutMutation.isPending : meQuery.isLoading || logoutMutation.isPending,
       error: meQuery.error ?? logoutMutation.error ?? null,
       isAuthenticated: Boolean(meQuery.data),
     };

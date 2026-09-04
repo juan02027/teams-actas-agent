@@ -40,32 +40,15 @@ export type MeetingOutput = {
   commitments: Array<{ personName: string; personEmail: string; action: string; dueDate: string; evidence: string; confidence: "high" | "medium" | "low" }>;
 };
 
-const systemPrompt = `Eres un secretario corporativo preciso. Analiza la reunión completa y extrae únicamente la información importante: temas tratados, avances, problemas, decisiones, objetivos, próximos pasos y compromisos. Ignora saludos, conversaciones casuales y repeticiones. El resumen debe describir los asuntos relevantes de la reunión aunque no exista ningún compromiso. No inventes información.
+const systemPrompt = `Eres un secretario corporativo. Analiza TODA la transcripción y redacta un acta completa, clara y específica. El executiveSummary debe tener varios párrafos o viñetas e incluir los temas realmente tratados, avances, explicaciones relevantes, problemas, decisiones y próximos pasos; no lo reduzcas a una frase. Ignora únicamente saludos, silencios, repeticiones y conversación casual. No inventes información.
 
-REGLA OBLIGATORIA PARA COMPROMISOS: incluye un elemento en commitments únicamente cuando la transcripción diga claramente que existe un compromiso, tarea asignada, acción acordada o promesa de entrega, Y también aparezca una fecha o plazo concreto. Cada elemento debe tener un responsable identificable y dueDate no vacío. Si falta responsable, fecha o evidencia explícita, NO lo incluyas. No conviertas opiniones, deseos, preguntas, ideas, tareas genéricas ni acuerdos sin fecha en compromisos. Conserva una cita breve como evidence. Devuelve únicamente JSON que cumpla el esquema.`;
+COMPROMISOS/TAREAS: extrae cada tarea o compromiso que se haya expresado de forma clara, con su responsable y una evidencia breve de la transcripción. Incluye acciones como entregar, enviar, preparar, validar, revisar, programar o hacer seguimiento cuando estén asignadas explícitamente. Si se menciona una fecha o plazo, consérvalo; si no se menciona, usa dueDate = "Por definir" para que el operador pueda completarlo. No conviertas preguntas, deseos, opiniones o temas generales en tareas. Describe la acción con suficiente detalle para que otra persona pueda ejecutarla. Devuelve únicamente JSON que cumpla el esquema. `;
 
-const MAX_TRANSCRIPT_CHARS = Number(process.env.GROQ_MAX_TRANSCRIPT_CHARS || 16000);
-const COMMITMENT_CONTEXT = /comprom|tarea|acción|accion|entregar|entrega|enviar|preparar|validar|revisar|asign|responsable|dueño|dueno|fecha|plazo|vence|viernes|lunes|martes|miércoles|miercoles|jueves|sábado|sabado|domingo|antes del|para el|pendiente|acordamos|acuerdo|decidimos|decisión|decision|seguimiento|área|area/i;
+const MAX_TRANSCRIPT_CHARS = Number(process.env.GROQ_MAX_TRANSCRIPT_CHARS || 60000);
 function compactTranscript(transcript: string) {
-  const lines = transcript.split(/\r?\n/).filter(Boolean);
-  const relevantIndexes = new Set<number>();
-  lines.forEach((line, index) => {
-    if (COMMITMENT_CONTEXT.test(line)) {
-      // Keep one adjacent line before and after each hit so the owner/action
-      // pair is not separated from its date or assignment.
-      if (index > 0) relevantIndexes.add(index - 1);
-      relevantIndexes.add(index);
-      if (index + 1 < lines.length) relevantIndexes.add(index + 1);
-    }
-  });
-  const relevant = Array.from(relevantIndexes).sort((a, b) => a - b).map((index) => lines[index]).join("\n");
-  if (!relevant) {
-    // Never generate an empty acta just because the transcript has no keyword
-    // on a line. Keep a bounded excerpt so the model can still extract the
-    // meeting content and produce a useful reviewable result.
-    return transcript.slice(0, MAX_TRANSCRIPT_CHARS) || "[La grabación no devolvió texto.]";
-  }
-  return relevant.length <= MAX_TRANSCRIPT_CHARS ? relevant : `${relevant.slice(0, MAX_TRANSCRIPT_CHARS)}\n[Contexto adicional omitido por límite de consumo.]`;
+  // Mantener el contenido completo evita que el acta quede reducida solo a
+  // las líneas que contienen palabras como "tarea" o "compromiso".
+  return transcript.length <= MAX_TRANSCRIPT_CHARS ? transcript : `${transcript.slice(0, MAX_TRANSCRIPT_CHARS)}\n[Transcripción adicional omitida por límite de tamaño.]`;
 }
 
 function textFromContent(content: unknown) {
@@ -83,7 +66,7 @@ function normalizeOutput(raw: Record<string, unknown>): MeetingOutput {
     const action = typeof candidate.action === "string" ? candidate.action.trim() : "";
     const dueDate = typeof candidate.dueDate === "string" ? candidate.dueDate.trim() : "";
     const evidence = typeof candidate.evidence === "string" ? candidate.evidence.trim() : "";
-    if (!personName || !action || !dueDate || !evidence || /^(no definido|no definida|n\/a|none|null)$/i.test(personName) || /^(no definido|no definida|n\/a|none|null)$/i.test(dueDate)) return [];
+    if (!personName || !action || !evidence || /^(no definido|no definida|n\/a|none|null)$/i.test(personName)) return [];
     const confidence: "high" | "medium" | "low" = candidate.confidence === "high" || candidate.confidence === "medium" || candidate.confidence === "low" ? candidate.confidence : "medium";
     return [{ personName, personEmail: typeof candidate.personEmail === "string" ? candidate.personEmail.trim() : "", action, dueDate, evidence, confidence }];
   });

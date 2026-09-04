@@ -9,6 +9,8 @@ build/
 
 # Environment variables
 .env
+.env.*
+!.env.example
 .env.local
 .env.development.local
 .env.test.local
@@ -41,6 +43,10 @@ lerna-debug.log*
 
 # Runtime data
 pids
+data/
+**/data/
+recordings/
+documents/
 *.pid
 *.seed
 *.pid.lock
@@ -108,15 +114,10 @@ temp/
 
 # Webdev artifacts (checkpoint zips, migrations, etc.)
 .webdev/
+*.zip
+*.tar.gz
+*.tgz
 
 # Manus version file (auto-generated, not part of source)
 client/public/__manus__/version.json
 .project-config.json
-data/
-recordings/
-documents/
-*.webm
-*.mp3
-*.mp4
-*.zip
-.env

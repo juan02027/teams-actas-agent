@@ -8,6 +8,8 @@ export const ENV = {
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   groqApiKey: process.env.GROQ_API_KEY ?? "",
+  openaiApiKey: process.env.OPENAI_API_KEY ?? "",
+  openaiChatModel: process.env.OPENAI_CHAT_MODEL ?? "gpt-4o-mini",
   deepgramApiKey: process.env.DEEPGRAM_API_KEY ?? "",
   deepgramModel: process.env.DEEPGRAM_MODEL ?? "nova-3",
   groqTranscriptionModel: process.env.GROQ_TRANSCRIPTION_MODEL ?? "whisper-large-v3-turbo",

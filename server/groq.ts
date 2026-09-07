@@ -1,6 +1,7 @@
 import { ENV } from "./_core/env";
 
 const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
+const OPENAI_BASE_URL = "https://api.openai.com/v1";
 const MAX_RECORDING_BYTES = 180 * 1024 * 1024;
 
 function groqKey() {
@@ -26,6 +27,7 @@ export function decodeRecordingDataUrl(value: string) {
 
 export async function transcribeWithGroq(input: { buffer: Buffer; mimeType: string; language?: string; title?: string }) {
   if (ENV.deepgramApiKey) return transcribeWithDeepgram(input);
+  if (ENV.openaiApiKey) return transcribeWithOpenAI(input);
   const form = new FormData();
   const extension = extensionForMime(input.mimeType);
   form.append("file", new Blob([new Uint8Array(input.buffer)], { type: input.mimeType }), `teams-recording.${extension}`);
@@ -58,6 +60,20 @@ export async function transcribeWithGroq(input: { buffer: Buffer; mimeType: stri
   const payload = await response.json() as { text?: string; language?: string; duration?: number };
   if (!payload.text || payload.text.trim().length < 10) throw new Error("Groq no devolvió una transcripción utilizable.");
   return { text: payload.text, language: payload.language || "es", duration: payload.duration || null };
+}
+
+async function transcribeWithOpenAI(input: { buffer: Buffer; mimeType: string; language?: string; title?: string }) {
+  const form = new FormData();
+  form.append("file", new Blob([new Uint8Array(input.buffer)], { type: input.mimeType }), `teams-recording.${extensionForMime(input.mimeType)}`);
+  form.append("model", process.env.OPENAI_TRANSCRIPTION_MODEL || "gpt-4o-mini-transcribe");
+  form.append("language", input.language || "es");
+  form.append("response_format", "json");
+  form.append("prompt", `Transcripción de una reunión corporativa en español. Conserva nombres, fechas, responsables y compromisos. Título: ${input.title || "Reunión de Teams"}.`);
+  const response = await fetch(`${OPENAI_BASE_URL}/audio/transcriptions`, { method: "POST", headers: { Authorization: `Bearer ${ENV.openaiApiKey}` }, body: form });
+  if (!response.ok) { const detail = await response.text().catch(() => ""); throw new Error(`OpenAI no pudo transcribir (${response.status}). La grabación permanece guardada. ${detail}`); }
+  const payload = await response.json() as { text?: string; language?: string; duration?: number };
+  if (!payload.text || payload.text.trim().length < 10) throw new Error("OpenAI no devolvió una transcripción utilizable.");
+  return { text: payload.text, language: payload.language || input.language || "es", duration: payload.duration || null };
 }
 
 async function transcribeWithDeepgram(input: { buffer: Buffer; mimeType: string; language?: string; title?: string }) {
@@ -120,4 +136,32 @@ export async function generateWithGroq(input: { system: string; user: string; sc
   const jsonEnd = content.lastIndexOf("}");
   if (jsonStart < 0 || jsonEnd <= jsonStart) throw new Error("Groq no devolvió JSON válido. Pulsa Procesar nuevamente; la grabación permanece guardada.");
   try { return JSON.parse(content.slice(jsonStart, jsonEnd + 1)) as Record<string, unknown>; } catch { throw new Error("Groq devolvió JSON incompleto. Pulsa Procesar nuevamente; la grabación permanece guardada."); }
+}
+
+export async function generateWithOpenAI(input: { system: string; user: string; schema: Record<string, unknown> }) {
+  if (!ENV.openaiApiKey) throw new Error("OPENAI_API_KEY no está configurada. Añádela al archivo .env local.");
+  const model = ENV.openaiChatModel;
+  const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${ENV.openaiApiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      temperature: 0,
+      max_tokens: 8000,
+      response_format: { type: "json_schema", json_schema: { name: "teams_meeting_documents", strict: true, schema: input.schema } },
+      messages: [
+        { role: "system", content: `${input.system}\nResponde únicamente con JSON válido conforme al esquema.` },
+        { role: "user", content: input.user },
+      ],
+    }),
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`OpenAI no pudo generar el acta (${response.status}). La grabación permanece guardada; pulsa Procesar nuevamente. ${detail}`);
+  }
+  const payload = await response.json() as { choices?: Array<{ message?: { content?: string | null } }>; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } };
+  if (payload.usage) console.info(`[OpenAI] acta modelo=${model} prompt=${payload.usage.prompt_tokens ?? 0} completion=${payload.usage.completion_tokens ?? 0} total=${payload.usage.total_tokens ?? 0}`);
+  const content = payload.choices?.[0]?.message?.content?.trim() || "";
+  if (!content) throw new Error("OpenAI devolvió una respuesta vacía. La grabación permanece guardada; pulsa Procesar nuevamente.");
+  try { return JSON.parse(content) as Record<string, unknown>; } catch { throw new Error("OpenAI devolvió JSON inválido. La grabación permanece guardada; pulsa Procesar nuevamente."); }
 }

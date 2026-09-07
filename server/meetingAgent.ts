@@ -1,6 +1,5 @@
-import { invokeLLM } from "./_core/llm";
 import { ENV } from "./_core/env";
-import { generateWithGroq } from "./groq";
+import { generateWithOpenAI } from "./groq";
 
 export const meetingOutputSchema = {
   type: "object",
@@ -114,13 +113,7 @@ function normalizeOutput(raw: Record<string, unknown>, transcript = "", attendee
 export async function generateMeetingDocuments(input: { meetingTitle: string; transcript: string; attendees?: Array<{ name: string; email: string; role?: string }> }) {
   const attendeeText = input.attendees?.length ? input.attendees.map((person) => `${person.name} <${person.email}>${person.role ? ` (${person.role})` : ""}`).join("\n") : "[No hay asistentes disponibles]";
   const user = `Título: ${input.meetingTitle}\n\nAsistentes invitados (inclúyelos en el acta, aunque no hayan hablado):\n${attendeeText}\n\nTranscripción:\n${compactTranscript(input.transcript)}`;
-  if (ENV.groqApiKey) return normalizeOutput(await generateWithGroq({ system: systemPrompt, user, schema: meetingOutputSchema }), input.transcript, input.attendees);
+  if (ENV.openaiApiKey) return normalizeOutput(await generateWithOpenAI({ system: systemPrompt, user, schema: meetingOutputSchema }), input.transcript, input.attendees);
 
-  const response = await invokeLLM({
-    model: "gpt-5-mini",
-    messages: [{ role: "system", content: `${systemPrompt} Si un campo no aplica, usa un arreglo vacío.` }, { role: "user", content: user }],
-    response_format: { type: "json_schema", json_schema: { name: "teams_meeting_documents", strict: true, schema: meetingOutputSchema } },
-    maxTokens: 8000,
-  });
-  return normalizeOutput(JSON.parse(textFromContent(response.choices?.[0]?.message?.content)) as Record<string, unknown>, input.transcript, input.attendees);
+  throw new Error("OPENAI_API_KEY no está configurada en el servicio del hosting. Agrega la variable en Render y ejecuta Clear build cache & deploy.");
 }

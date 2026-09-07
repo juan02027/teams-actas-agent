@@ -284,6 +284,11 @@ export default function Home() {
       toast.warning(`Acta local lista; SharePoint no se actualizó: ${error instanceof Error ? error.message : "revisa Sites.ReadWrite.All"}`);
     }
   };
+  const resetMicrosoftSession = async (message = "La sesión de Microsoft 365 expiró. Pulsa Vincular Microsoft 365 para iniciar sesión nuevamente.") => {
+    try { if (microsoftApp) { await microsoftApp.initialize(); const accounts = microsoftApp.getAllAccounts(); for (const account of accounts) microsoftApp.logoutRedirect({ account, postLogoutRedirectUri: `${publicAppUrl}/` }).catch(() => undefined); } } catch { /* la limpieza local continúa */ }
+    localStorage.removeItem("m365-connected"); localStorage.removeItem("m365-profile"); sessionStorage.removeItem("msal.interaction.status"); setConnected(false); setMeetings([]); toast.warning(message);
+  };
+  const isExpiredMicrosoftSession = (error: unknown) => { const text = error instanceof Error ? error.message : JSON.stringify(error); return /refresh_token_expired|AADSTS160021|interaction_required|invalid_grant/i.test(text); };
   useEffect(() => {
     if (!microsoftApp) return;
     void (async () => {
@@ -294,7 +299,8 @@ export default function Home() {
         if (account) await syncMicrosoftCalendar(account);
       } catch (error) {
         const code = error && typeof error === "object" && "errorCode" in error ? String((error as { errorCode?: string }).errorCode) : "";
-        if (code === "interaction_in_progress") { sessionStorage.removeItem("msal.interaction.status"); toast.error("Microsoft conservaba un inicio anterior. Ya limpié el estado local; recarga el panel y vuelve a intentarlo una sola vez."); }
+        if (isExpiredMicrosoftSession(error)) await resetMicrosoftSession();
+        else if (code === "interaction_in_progress") { sessionStorage.removeItem("msal.interaction.status"); toast.error("Microsoft conservaba un inicio anterior. Ya limpié el estado local; recarga el panel y vuelve a intentarlo una sola vez."); }
         else toast.error(error instanceof Error ? error.message : "No se pudo completar la conexión Microsoft 365");
       } finally { setAuthReady(true); }
     })();
@@ -311,7 +317,8 @@ export default function Home() {
       await microsoftApp.loginRedirect({ scopes: microsoftScopes });
     } catch (error) {
       const code = error && typeof error === "object" && "errorCode" in error ? String((error as { errorCode?: string }).errorCode) : "";
-      if (code === "interaction_in_progress") { sessionStorage.removeItem("msal.interaction.status"); toast.error("Se limpió una sesión anterior de Microsoft. Recarga la página e inténtalo una sola vez."); }
+      if (isExpiredMicrosoftSession(error)) await resetMicrosoftSession("La sesión anterior de Microsoft 365 expiró. Se limpió; vuelve a pulsar Vincular Microsoft 365.");
+      else if (code === "interaction_in_progress") { sessionStorage.removeItem("msal.interaction.status"); toast.error("Se limpió una sesión anterior de Microsoft. Recarga la página e inténtalo una sola vez."); }
       else toast.error(error instanceof Error ? error.message : "No se pudo iniciar la conexión Microsoft 365");
       setConnecting(false);
     }

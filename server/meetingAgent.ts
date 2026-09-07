@@ -41,7 +41,7 @@ export type MeetingOutput = {
 
 const systemPrompt = `Eres un secretario corporativo. Analiza TODA la transcripción y redacta un acta completa, clara y específica. El executiveSummary debe tener varios párrafos o viñetas e incluir los temas realmente tratados, avances, explicaciones relevantes, problemas, decisiones y próximos pasos; no lo reduzcas a una frase. Ignora únicamente saludos, silencios, repeticiones y conversación casual. No inventes información.
 
-COMPROMISOS/TAREAS: extrae cada tarea o compromiso que se haya expresado de forma clara, con su responsable y una evidencia breve de la transcripción. Incluye acciones como entregar, enviar, preparar, validar, revisar, programar o hacer seguimiento cuando estén asignadas explícitamente. Si se menciona una fecha o plazo, consérvalo; si no se menciona, usa dueDate = "Por definir" para que el operador pueda completarlo. No conviertas preguntas, deseos, opiniones o temas generales en tareas. Si no hay asistentes del calendario, usa el nombre que aparezca en la transcripción; si Deepgram solo entrega etiquetas, usa "Hablante 1", "Hablante 2", etc., nunca dejes personName vacío. Describe la acción con suficiente detalle para que otra persona pueda ejecutarla. Devuelve únicamente JSON que cumpla el esquema. `;
+COMPROMISOS/TAREAS: extrae cada tarea o compromiso que se haya expresado de forma clara, con su responsable y una evidencia breve de la transcripción. Detecta asignaciones dichas en voz alta aunque la persona no esté en el calendario: "Carlos, por favor valida...", "María debe enviar...", "a Juan le corresponde revisar...", "Pedro: entregar..." o "yo, Ana, me encargo...". Usa como personName el nombre completo mencionado, relaciona la acción con ese nombre y conserva la frase exacta en evidence. Incluye acciones como entregar, enviar, preparar, validar, revisar, programar o hacer seguimiento cuando estén asignadas explícitamente. Si se menciona una fecha o plazo, consérvalo; si no se menciona, usa dueDate = "Por definir" para que el operador pueda completarlo. No conviertas preguntas, deseos, opiniones o temas generales en tareas. Si no hay asistentes del calendario, usa el nombre que aparezca en la transcripción; si Deepgram solo entrega etiquetas, usa "Hablante 1", "Hablante 2", etc., nunca dejes personName vacío. Describe la acción con suficiente detalle para que otra persona pueda ejecutarla. Devuelve únicamente JSON que cumpla el esquema. `;
 
 const MAX_TRANSCRIPT_CHARS = Number(process.env.GROQ_MAX_TRANSCRIPT_CHARS || 60000);
 function compactTranscript(transcript: string) {
@@ -84,6 +84,23 @@ function fallbackCommitments(transcript: string, attendees: Array<{ name: string
     return [{ personName, personEmail: attendee?.email || "", action, dueDate, evidence: clean, confidence: "medium" as const }];
   }).slice(0, 20);
 }
+function namedAssignmentCommitments(transcript: string, attendees: Array<{ name: string; email: string; role?: string }> = []) {
+  const action = /\b(debe(?:n)?|tiene que|va a|se encargará de|se encarga de|por favor|favor de|entregar|enviar|preparar|validar|revisar|programar|coordinar|documentar|actualizar|completar|agendar|compartir|elaborar|definir|hacer seguimiento|dar seguimiento)\b/i;
+  const datePattern = /\b(hoy|mañana|lunes|martes|miércoles|jueves|viernes|sábado|domingo|esta semana|la próxima semana|antes del [^,.;\n]+|el [^,.;\n]+|\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?)\b/i;
+  const results: MeetingOutput["commitments"] = [];
+  const seen = new Set<string>();
+  for (const rawLine of transcript.split(/\r?\n|(?<=[.!?])\s+/)) {
+    const line = rawLine.replace(/^[-*•\d.)\s]+/, "").trim();
+    const match = line.match(/^\[?([A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ]+){0,3})\]?[,:;]\s*(?:por favor\s+)?(.+)$/i);
+    if (!match || line.length < 12 || !action.test(match[2])) continue;
+    const name = match[1].trim(); const task = match[2].trim();
+    const key = `${name.toLowerCase()}|${task.toLowerCase()}`; if (seen.has(key)) continue; seen.add(key);
+    const attendee = attendees.find((person) => person.name.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(person.name.toLowerCase()));
+    results.push({ personName: attendee?.name || name, personEmail: attendee?.email || "", action: task, dueDate: task.match(datePattern)?.[0] || "Por definir", evidence: line, confidence: attendee ? "high" : "medium" });
+  }
+  return results;
+}
+
 function normalizeOutput(raw: Record<string, unknown>, transcript = "", attendees: Array<{ name: string; email: string; role?: string }> = []): MeetingOutput {
   const rawCommitments = Array.isArray(raw.commitments) ? raw.commitments : [];
   const commitments = rawCommitments.flatMap((item) => {
@@ -102,7 +119,9 @@ function normalizeOutput(raw: Record<string, unknown>, transcript = "", attendee
     const personEmail = attendee?.email || (typeof candidate.personEmail === "string" ? candidate.personEmail.trim() : "");
     return [{ personName, personEmail, action, dueDate: dueDate || "Por definir", evidence: evidence || action, confidence }];
   });
-  const finalCommitments = commitments.length ? commitments : fallbackCommitments(transcript, attendees);
+  const namedCommitments = namedAssignmentCommitments(transcript, attendees);
+  const combinedCommitments = [...commitments, ...namedCommitments].filter((item, index, all) => all.findIndex((other) => other.action.toLowerCase() === item.action.toLowerCase() && other.personName.toLowerCase() === item.personName.toLowerCase()) === index);
+  const finalCommitments = combinedCommitments.length ? combinedCommitments : fallbackCommitments(transcript, attendees);
   return {
     executiveSummary: typeof raw.executiveSummary === "string" && raw.executiveSummary.trim() ? raw.executiveSummary.trim() : "No se identificaron notas relevantes en la transcripción.",
     objective: typeof raw.objective === "string" && raw.objective.trim() ? raw.objective.trim() : "No se identificó un objetivo explícito en la transcripción.",

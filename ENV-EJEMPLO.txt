@@ -7,6 +7,13 @@ DEEPGRAM_MODEL=nova-3
 OPENAI_API_KEY=REEMPLAZAR
 OPENAI_CHAT_MODEL=gpt-4o-mini
 OPENAI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
+# Buzón fijo que enviará las actas por SMTP
+SMTP_HOST=smtp.office365.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=cuenta-que-enviara@tuempresa.com
+SMTP_PASSWORD=CONTRASENA_O_CLAVE_DE_APLICACION
+SMTP_FROM=cuenta-que-enviara@tuempresa.com
 VITE_MICROSOFT_CLIENT_ID=REEMPLAZAR
 VITE_MICROSOFT_TENANT_ID=REEMPLAZAR
 # URL exacta con la que los usuarios abrirán el panel, incluyendo el puerto.

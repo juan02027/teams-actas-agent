@@ -22,3 +22,6 @@ VITE_SHAREPOINT_SITE_URL=https://yourtenant.sharepoint.com/yoursite
 VITE_SHAREPOINT_LIST_NAME=Reuniones Efectivas
 VITE_SHAREPOINT_COLUMN_NAME=Nota
 LOCAL_DATA_DIR=/app/data
+# Carpeta persistente del servidor Windows montada por docker-compose.
+# Usa una ruta con /, por ejemplo C:/TeamsActasData.
+TEAMS_DATA_DIR=C:/TeamsActasData

@@ -58,6 +58,7 @@ export type LocalCommitment = {
   dueDate: string;
   status: "open" | "in_progress" | "done" | "blocked";
   evidence?: string;
+  followUpNotes?: string;
   confidence?: "high" | "medium" | "low";
   createdAt: string;
 };
@@ -212,7 +213,12 @@ export function listLocalRecordings() {
 
 export function clearLocalRecordingReference(meetingId: number) {
   const state = readState();
-  state.recordings.filter((recording) => recording.meetingId === meetingId && recording.processingFilePath).forEach((recording) => { try { fs.unlinkSync(recording.processingFilePath!); } catch { /* already removed */ } });
+  state.recordings.filter((recording) => recording.meetingId === meetingId).forEach((recording) => {
+    for (const filePath of [recording.filePath, recording.processingFilePath]) {
+      if (!filePath) continue;
+      try { fs.unlinkSync(filePath); } catch { /* already removed */ }
+    }
+  });
   state.recordings = state.recordings.filter((recording) => recording.meetingId !== meetingId);
   const meeting = state.meetings.find((candidate) => candidate.id === meetingId);
   if (meeting) Object.assign(meeting, { recordingUrl: null, recordingFileName: null, recordingMimeType: null, recordingSizeBytes: null, updatedAt: now() });
@@ -229,7 +235,7 @@ export function saveLocalDocuments(input: { meetingId: number; documents: Array<
     const document: LocalDocument = { id, meetingId: input.meetingId, kind: item.kind, format: item.format, fileName: item.fileName, filePath, storageKey: item.storageKey || null, storageUrl: `/api/local-documents/${id}/download`, generatedAt: timestamp };
     state.documents.push(document); return document;
   });
-  input.commitments.forEach((item) => state.commitments.push({ id: nextId(state), meetingId: input.meetingId, personName: item.personName, personEmail: item.personEmail || null, action: item.action, dueDate: item.dueDate, status: "open", evidence: item.evidence, confidence: item.confidence, createdAt: timestamp }));
+  input.commitments.forEach((item) => state.commitments.push({ id: nextId(state), meetingId: input.meetingId, personName: item.personName, personEmail: item.personEmail || null, action: item.action, dueDate: item.dueDate, status: "open", evidence: item.evidence, followUpNotes: "", confidence: item.confidence, createdAt: timestamp }));
   const meeting = state.meetings.find((candidate) => candidate.id === input.meetingId);
   if (meeting) Object.assign(meeting, { status: "review", errorMessage: null, updatedAt: timestamp });
   writeState(state); return documents;
@@ -246,11 +252,12 @@ export function deleteLocalDocument(id: number) {
 export function updateLocalCommitmentStatus(id: number, status: LocalCommitment["status"]) {
   const state = readState(); const item = state.commitments.find((commitment) => commitment.id === id); if (!item) return undefined; item.status = status; writeState(state); return item;
 }
-export function updateLocalCommitment(id: number, patch: { personName?: string; action?: string; dueDate?: string }) {
+export function updateLocalCommitment(id: number, patch: { personName?: string; action?: string; dueDate?: string; followUpNotes?: string }) {
   const state = readState(); const item = state.commitments.find((commitment) => commitment.id === id); if (!item) return undefined;
   if (patch.personName?.trim()) item.personName = patch.personName.trim();
   if (patch.action?.trim()) item.action = patch.action.trim();
   if (patch.dueDate?.trim()) item.dueDate = patch.dueDate.trim();
+  if (patch.followUpNotes !== undefined) item.followUpNotes = patch.followUpNotes.trim();
   writeState(state); return item;
 }
 export function deleteLocalCommitment(id: number) {

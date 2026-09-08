@@ -98,9 +98,25 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
     const updateProfile = () => {
       try { setM365Profile(JSON.parse(localStorage.getItem("m365-profile") || "null") as { name: string; email: string } | null); } catch { setM365Profile(null); }
     };
+    const clearProfile = () => setM365Profile(null);
     window.addEventListener("m365-profile-updated", updateProfile);
-    return () => window.removeEventListener("m365-profile-updated", updateProfile);
+    window.addEventListener("m365-signed-out", clearProfile);
+    return () => { window.removeEventListener("m365-profile-updated", updateProfile); window.removeEventListener("m365-signed-out", clearProfile); };
   }, []);
+
+  const handleLogout = async () => {
+    try { await logout(); } catch { /* aun así se limpia la sesión local */ }
+    try {
+      localStorage.removeItem("m365-connected");
+      localStorage.removeItem("m365-profile");
+      sessionStorage.removeItem("msal.interaction.status");
+      for (const key of Object.keys(localStorage)) if (key.toLowerCase().startsWith("msal.")) localStorage.removeItem(key);
+    } catch { /* almacenamiento no disponible */ }
+    setM365Profile(null);
+    window.dispatchEvent(new Event("m365-signed-out"));
+    window.dispatchEvent(new Event("m365-profile-updated"));
+    setLocation("/");
+  };
 
   useEffect(() => {
     if (isCollapsed) setIsResizing(false);
@@ -152,7 +168,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
           <SidebarFooter className="border-t border-[#dbe8e5] p-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild><button className="flex w-full items-center gap-3 rounded-xl px-1 py-2 text-left transition hover:bg-[#e7f2ef] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5d887f] group-data-[collapsible=icon]:justify-center"><Avatar className="h-9 w-9 shrink-0 border border-[#b9d7d0] bg-[#d9ebe5]"><AvatarFallback className="bg-[#d9ebe5] text-xs font-bold text-[#102c36]">{displayName.charAt(0).toUpperCase()}</AvatarFallback></Avatar><div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden"><p className="truncate text-sm font-bold text-[#102c36]">{displayName}</p><p className="mt-1 truncate text-xs font-semibold text-[#304b50]">{displayEmail}</p></div></button></DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48"><DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive"><LogOut className="mr-2 h-4 w-4" />Cerrar sesión</DropdownMenuItem></DropdownMenuContent>
+              <DropdownMenuContent align="end" className="w-48"><DropdownMenuItem onClick={() => { void handleLogout(); }} className="cursor-pointer text-destructive focus:text-destructive"><LogOut className="mr-2 h-4 w-4" />Cerrar sesión</DropdownMenuItem></DropdownMenuContent>
             </DropdownMenu>
           </SidebarFooter>
         </Sidebar>

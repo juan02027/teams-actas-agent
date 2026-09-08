@@ -9,7 +9,7 @@ process.env.LOCAL_DATA_DIR = tempDir;
 const store = await import("./localStore");
 
 describe("local recording index", () => {
-  it("stores WebM metadata and removes only the history reference", () => {
+  it("stores WebM metadata and removes the file only when requested", () => {
     const meeting = store.createLocalMeeting({ title: "Prueba de descarga" });
     const bytes = Buffer.from("webm-test-data");
     const saved = store.saveLocalRecording({ meetingId: meeting.id, title: meeting.title, mimeType: "video/webm", buffer: bytes, durationSeconds: 3600 });
@@ -18,7 +18,7 @@ describe("local recording index", () => {
     expect(store.listLocalRecordings()).toHaveLength(1);
     store.clearLocalRecordingReference(meeting.id);
     expect(store.listLocalRecordings()).toHaveLength(0);
-    expect(fs.existsSync(saved.recording.filePath)).toBe(true);
+    expect(fs.existsSync(saved.recording.filePath)).toBe(false);
   });
 
   it("keeps only explicit commitments and tracks status", () => {

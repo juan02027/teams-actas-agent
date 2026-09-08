@@ -24,9 +24,8 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - teams_actas_data:/app/data
+      # En Windows define TEAMS_DATA_DIR en .env, por ejemplo:
+      # TEAMS_DATA_DIR=C:/TeamsActasData
+      # Así las grabaciones, actas y el índice sobreviven a cualquier rebuild.
+      - ${TEAMS_DATA_DIR:-./data}:/app/data
     stop_grace_period: 30s
-
-volumes:
-  teams_actas_data:
-    name: teams_actas_data

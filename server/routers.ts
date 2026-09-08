@@ -25,7 +25,9 @@ async function processStoredRecording(meetingId: number, input: { buffer: Buffer
   updateLocalMeeting(target.id, { status: "processing", errorMessage: null });
   try {
     const transcript = await transcribeWithGroq({ buffer: input.buffer, mimeType: input.mimeType, title: target.title });
-    const attendees = input.attendees?.length ? input.attendees : inferAttendeesFromTranscript(transcript.text);
+    const inferred = inferAttendeesFromTranscript(transcript.text);
+    const supplied = input.attendees || [];
+    const attendees = [...supplied, ...inferred.filter((candidate) => !supplied.some((person) => person.name.trim().toLocaleLowerCase() === candidate.name.trim().toLocaleLowerCase()))];
     const output = await generateMeetingDocuments({ meetingTitle: target.title, transcript: transcript.text, attendees });
     const generated = await makeLocalDocuments({ meetingTitle: target.title, output, attendees });
     const documents = saveLocalDocuments({ meetingId: target.id, documents: generated.documents, commitments: output.commitments });
@@ -62,7 +64,7 @@ export const appRouter = router({
     clearRecordingReference: operatorProcedure.input(z.object({ meetingId: z.number().int().positive() })).mutation(({ input }) => clearLocalRecordingReference(input.meetingId)),
     deleteDocument: operatorProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input }) => { if (!getLocalDocument(input.id)) throw new TRPCError({ code: "NOT_FOUND", message: "El acta ya no existe." }); return deleteLocalDocument(input.id); }),
     updateCommitmentStatus: operatorProcedure.input(z.object({ id: z.number().int().positive(), status: statusSchema })).mutation(({ input }) => { const result = updateLocalCommitmentStatus(input.id, input.status); if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "El compromiso ya no existe." }); return result; }),
-    updateCommitment: operatorProcedure.input(z.object({ id: z.number().int().positive(), personName: z.string().min(1).max(180), action: z.string().min(1).max(2000), dueDate: z.string().min(1).max(64) })).mutation(({ input }) => { const result = updateLocalCommitment(input.id, input); if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "El compromiso ya no existe." }); return result; }),
+    updateCommitment: operatorProcedure.input(z.object({ id: z.number().int().positive(), personName: z.string().min(1).max(180), action: z.string().min(1).max(2000), dueDate: z.string().min(1).max(64), followUpNotes: z.string().max(5000).optional() })).mutation(({ input }) => { const result = updateLocalCommitment(input.id, input); if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "El compromiso ya no existe." }); return result; }),
     sendMinutesEmail: operatorProcedure.input(z.object({ recipients: z.array(z.string().email()).min(1).max(100), subject: z.string().min(1).max(200), text: z.string().min(1).max(100000) })).mutation(({ input }) => sendMinutesEmail(input)),
     deleteCommitment: operatorProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input }) => deleteLocalCommitment(input.id)),
   }),
